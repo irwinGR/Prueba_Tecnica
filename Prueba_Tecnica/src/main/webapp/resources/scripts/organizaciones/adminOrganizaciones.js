@@ -1,6 +1,7 @@
 var table;
 $(function() {
 	console.log('inicia JS');
+	$("#dtOrganizacion").html(htmlTabla())
 	initDataTable();
 	initEVentos();
 });
@@ -32,6 +33,36 @@ function initDataTable(){
 
             });
 
+            $('#dtOrganizacion tbody').on(
+        			'click',
+        			'tr',
+        			function() {
+        				if ($(this).hasClass('selected')) {
+        					$(this).removeClass('selected');
+        				} else {
+        					$('#dtOrganizacion').DataTable().$('tr.selected').removeClass(
+        							'selected');
+        					$(this).addClass('selected');
+        				}
+        			});
+            $('#dtOrganizacion tbody').on('click', 'tr', function() {
+        		$(this).addClass('selected');
+        		
+        		var row = $('#dtOrganizacion').DataTable().row('.selected').data();
+        		if (row) {
+        			$('#exampleModal').modal('show');
+        			$('#codigoValidar').val("");
+        			$("input").attr("readonly",false);
+        		}else {
+        			$.smallBox({
+        				title : "Información",
+        				content : "<i>Debe seleccionar por lo menos un elemento</i>",
+        				color : "#c79121",
+        				timeout : 4000,
+        				icon : "fa fa-info-circle swing animated"
+        			});
+        		}
+        	});
 
         }
     });
@@ -46,6 +77,10 @@ function initEVentos(){
 			});
         });
 		
+		$("input").attr("readonly",false);
+		
+		$("#btnSave").show();
+		
 		validacion();
 	});
 	
@@ -53,6 +88,12 @@ function initEVentos(){
 	$('#fmOrganizaciones').bootstrapValidator('destroy');
 	
 	$('#codigo').keypress(function (event) {
+      if (event.which < 48 || event.which > 57 || this.value.length === 4) {
+        return false;
+      }
+    });
+	
+	$('#codigoValidar').keypress(function (event) {
       if (event.which < 48 || event.which > 57 || this.value.length === 4) {
         return false;
       }
@@ -74,16 +115,31 @@ function initEVentos(){
 		$('#fmOrganizaciones').data('bootstrapValidator').validate();
 		var n = $('#fmOrganizaciones').data('bootstrapValidator').isValid();
 		if (n) {
-			saveActividad();
-
+			saveOrganizacion();
 		} else {
-
 			validacion();
 		}
 	});
 	
+	
+	
+	$("#consultar").click(function(){
+		editAOrganizacion();
+		
+	})
+	
 }
+function htmlTabla() {
+    var html = "";
+    html += '<thead >'
+    html += '    <tr>'
+    html += '        <th>IDExterno</th>'
+    html += '        <th>Nombre</th>'
+    html += '    </tr>'
+    html += '</thead>';
 
+    return html;
+}
 function validacion() {
 	$('#fmOrganizaciones')
 			.bootstrapValidator(
@@ -134,13 +190,13 @@ function validacion() {
 						}
 					});
 }
-function saveActividad(){
+function saveOrganizacion(){
 	$('#btnSave').prop("disabled", true);
 	$.ajax({
 		type : "POST",
 		url : ctx + '/organizacionController/addOrganizacion',
 		data : {
-			idExterno:"ff",
+			idExterno:idExterno(),
 			nombre:$("#nombreO").val(),
 			direccion:$("#direccion").val(),
 			codigo:$("#codigo").val(),
@@ -148,6 +204,18 @@ function saveActividad(){
 		},
 		success : function(data) {
 			showOkMessage('¡Operación Exitosa!', 'Actividad Guardada. <b>');
+			
+			if (table) {
+				table.destroy();
+				table = null;
+	            $("#dtOrganizacion").empty();
+	            $("#dtOrganizacion").html(htmlTabla());
+	            initDataTable();
+	        } else {
+	            $("#dtOrganizacion").html(htmlTabla());
+	            initDataTable();
+	        }
+			
 			$('#divCrear').hide('fast', function() {
 				$('#divActividad').show('fast', function() {
 				});
@@ -160,4 +228,42 @@ function saveActividad(){
 function idExterno(){
 	var cadenaNombre = $("#nombreO").val();
 	var cadenaTelefono = $("#telefono").val();
+	
+	return cadenaNombre.substr(0, 4) + cadenaTelefono.substr(cadenaTelefono.length - 4)+"NE"+numeroAleatorio(0001,9999);
+}
+function numeroAleatorio(min, max) {
+  return Math.round(Math.random() * (max - min) + min);
+}
+
+function editAOrganizacion() {
+	var row = $('#dtOrganizacion').DataTable().row('.selected').data();
+		if(row.codigo == $('#codigoValidar').val()){
+			
+			$('#exampleModal').modal('hide');
+			
+			$('#nombreO').val(row.nombre);
+			$('#direccion').val(row.direccion);
+			$('#telefono').val(row.telefono);
+			$('#codigo').val(row.codigo);
+
+			
+			$('#divCrear').show('fast', function() {
+				$('#divActividad').hide('fast', function() {
+					
+				});
+			});
+			$('#nombreAcividad').html('<b>Informacion de Organizacion</b>');	
+			$("input").attr("readonly",true);
+			$("#btnSave").hide()
+				
+		}else{
+			$.smallBox({
+				title : "Información",
+				content : "<i>El codigo ingresado es incorrecto</i>",
+				color : "#c79121",
+				timeout : 4000,
+				icon : "fa fa-info-circle swing animated"
+			});
+		}
+	
 }
